@@ -1,0 +1,179 @@
+CREATE TABLE IF NOT EXISTS roles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  description VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS permissions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(100) NOT NULL UNIQUE, -- e.g. "price.update", "content.manage"
+  description VARCHAR(255) DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_id INT NOT NULL,
+  permission_id INT NOT NULL,
+  PRIMARY KEY (role_id, permission_id),
+  FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+  FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role_id INT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (role_id) REFERENCES roles(id)
+);
+
+DROP TABLE IF EXISTS fuel_prices;
+
+CREATE TABLE IF NOT EXISTS fuel_prices (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  province VARCHAR(100) NOT NULL,
+  fuel_type VARCHAR(50) NOT NULL, 
+  price DECIMAL(10, 2) NOT NULL,
+  unit VARCHAR(20) NOT NULL DEFAULT 'liter',
+  updated_by INT DEFAULT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE KEY uniq_province_fuel (province, fuel_type)
+);
+
+CREATE TABLE IF NOT EXISTS bright_gas_prices (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  province VARCHAR(100) NOT NULL UNIQUE,
+  price_5_5kg DECIMAL(10, 2) DEFAULT NULL, -- NULL = tidak tersedia SPBE di wilayah tersebut
+  price_12kg DECIMAL(10, 2) DEFAULT NULL,
+  updated_by INT DEFAULT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  category VARCHAR(50) NOT NULL, -- e.g. "gasoline", "diesel"
+  slug VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  brand_color VARCHAR(20) NOT NULL DEFAULT '#dc2626',
+  logo_url VARCHAR(500) DEFAULT NULL,
+  hero_background_url VARCHAR(500) DEFAULT NULL,
+  hero_object_url VARCHAR(500) DEFAULT NULL,
+  headline VARCHAR(255) NOT NULL,
+  spec_badge VARCHAR(100) DEFAULT NULL,
+  tagline VARCHAR(150) DEFAULT NULL,
+  tech_title VARCHAR(200) DEFAULT NULL,
+  tech_highlight VARCHAR(100) DEFAULT NULL, -- kata dalam tech_title yang diberi warna aksen
+  tech_image_url VARCHAR(500) DEFAULT NULL,
+  video_url VARCHAR(500) DEFAULT NULL,
+  video_title VARCHAR(200) DEFAULT NULL,
+  ba_photo_url VARCHAR(500) DEFAULT NULL,
+  ba_position VARCHAR(200) DEFAULT NULL,
+  ba_name VARCHAR(100) DEFAULT NULL,
+  ba_quote VARCHAR(500) DEFAULT NULL,
+  benefits_title VARCHAR(200) DEFAULT NULL,
+  benefits_highlight VARCHAR(100) DEFAULT NULL,
+  is_published BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_category_slug (category, slug)
+);
+
+CREATE TABLE IF NOT EXISTS product_tech_features (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  title_highlight VARCHAR(100) DEFAULT NULL,
+  description VARCHAR(500) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS product_tech_badges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  icon VARCHAR(50) NOT NULL, -- key ikon bawaan frontend, mis. "formula", "octane", "ignition"
+  label VARCHAR(150) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS product_benefits (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  icon VARCHAR(50) NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  description VARCHAR(500) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS location_directory (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  channel VARCHAR(30) NOT NULL, -- 'spbu-pertamina' | 'ges' | 'pertamax-green-95' | 'lpg' | 'bright-store' | 'bright-cafe'
+  code VARCHAR(50) DEFAULT NULL, -- Kode SPBU (tidak dipakai untuk channel 'lpg')
+  name VARCHAR(150) DEFAULT NULL, -- Nama Outlet/Agen (khusus channel 'lpg')
+  address VARCHAR(255) DEFAULT NULL,
+  city VARCHAR(100) NOT NULL,
+  province VARCHAR(100) NOT NULL,
+  type VARCHAR(20) DEFAULT NULL, -- 'Outlet' | 'Agen' (khusus channel 'lpg')
+  has_spklu BOOLEAN DEFAULT NULL, -- khusus channel 'ges'
+  has_spbklu BOOLEAN DEFAULT NULL, -- khusus channel 'ges'
+  updated_by INT DEFAULT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_channel (channel),
+  INDEX idx_channel_city (channel, city),
+  INDEX idx_channel_province (channel, province)
+);
+
+DROP TABLE IF EXISTS contents;
+
+CREATE TABLE IF NOT EXISTS contents (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  type VARCHAR(50) NOT NULL, 
+  category VARCHAR(50) DEFAULT NULL,
+  slug VARCHAR(200) DEFAULT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT DEFAULT NULL,
+  body_html MEDIUMTEXT DEFAULT NULL,
+  image_url VARCHAR(500) DEFAULT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  start_date DATE DEFAULT NULL,
+  end_date DATE DEFAULT NULL,
+  created_by INT DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE KEY uniq_slug (slug)
+);
+
+CREATE TABLE IF NOT EXISTS facility_stats (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  stat_key VARCHAR(50) NOT NULL UNIQUE, -- mis. "spklu", "spbklu"
+  label VARCHAR(150) NOT NULL,
+  value INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS ucollect_locations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  address VARCHAR(500) NOT NULL,
+  region VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS faqs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question VARCHAR(300) NOT NULL,
+  answer TEXT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
